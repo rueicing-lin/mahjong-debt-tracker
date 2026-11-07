@@ -2,66 +2,115 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>麻將欠點帳本｜裝置註冊</title>
-  <style>
-    body {
-      font-family: Arial, "Noto Sans TC", sans-serif;
-      background: #17232d;
-      color: white;
-      padding: 30px 18px;
-      margin: 0;
-    }
-    main {
-      max-width: 500px;
-      margin: 50px auto;
-      padding: 25px;
-      background: #243541;
-      border-radius: 16px;
-    }
-    h1 { font-size: 25px; }
-    .uid {
-      background: #101820;
-      padding: 15px;
-      border-radius: 8px;
-      overflow-wrap: anywhere;
-      user-select: all;
-    }
-    button {
-      background: #e0b45b;
-      border: 0;
-      padding: 12px 18px;
-      border-radius: 8px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    #uidArea { display: none; }
-    #status { color: #f4cf83; line-height: 1.7; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>麻將欠點帳本</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#101b24;color:#f4f3ed;font-family:Arial,"Noto Sans TC",sans-serif;padding:18px}
+main{max-width:760px;margin:auto}
+h1{font-size:26px;margin:10px 0}
+.sub{color:#aebdc5;font-size:14px}
+.panel{background:#1d2c37;border:1px solid #354956;border-radius:14px;padding:17px;margin:14px 0}
+h2{font-size:18px;margin:0 0 14px}
+input,select{width:100%;padding:12px;border-radius:8px;border:1px solid #50616c;background:#101b24;color:white;font-size:16px;margin:6px 0 12px}
+button{border:0;border-radius:9px;padding:12px 16px;background:#e0b45b;color:#18232b;font-size:15px;font-weight:bold;cursor:pointer}
+button.secondary{background:#425664;color:white}
+button.danger{background:#9c4545;color:white}
+button:disabled{opacity:.45}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.person{background:#263945;padding:13px;border-radius:10px}
+.person strong{display:block;font-size:17px;margin-bottom:7px}
+.amount{font-size:21px;font-weight:bold}
+.positive{color:#ffb5a9}.negative{color:#a9e3c1}
+.small{font-size:12px;color:#aebdc5}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.entry{border-bottom:1px solid #3b4b55;padding:12px 0;line-height:1.6}
+.entry:last-child{border:0}
+.hidden{display:none!important}
+.status{padding:12px;border-radius:9px;background:#293b47;margin:12px 0;line-height:1.6}
+.error{color:#ffaaa3}
+.success{color:#a9e3c1}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.tabs button{flex:1}
+@media(max-width:480px){body{padding:12px}.grid{grid-template-columns:1fr 1fr}.panel{padding:14px}}
+</style>
 </head>
 <body>
 <main>
-  <h1>麻將欠點帳本</h1>
-  <p>四人共用帳本｜裝置註冊測試</p>
-  <p id="status">正在連接 Firebase……</p>
+  <h1>🀄 麻將欠點帳本</h1>
+  <div class="sub">慶・德・歐・哲｜四人即時同步</div>
+  <div id="status" class="status">正在連接 Firebase……</div>
 
-  <div id="uidArea">
-    <p>你的裝置 UID：</p>
-    <div class="uid" id="uid"></div>
-    <br>
-    <button id="copyBtn">複製 UID</button>
-    <p>請把 UID 傳給帳本管理者，並告知你的玩家身分。</p>
-  </div>
+  <section id="joinPanel" class="panel hidden">
+    <h2>加入麻將帳本</h2>
+    <p>目前裝置尚未獲得使用權限。請選擇你的玩家身分，向管理者申請加入。</p>
+    <label>你的身分</label>
+    <select id="joinName">
+      <option value="德">德</option>
+      <option value="歐">歐</option>
+      <option value="哲">哲</option>
+    </select>
+    <button id="joinBtn">送出加入申請</button>
+    <p class="small">申請後請通知慶核准。核准後重新整理網頁即可。</p>
+  </section>
+
+  <section id="appPanel" class="hidden">
+    <div class="panel">
+      <div class="row">
+        <div>
+          <div class="small">目前登入身分</div>
+          <strong id="myName">—</strong>
+        </div>
+        <div class="small">房間：mahjong01</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>四人目前淨額</h2>
+      <div class="grid" id="balances"></div>
+      <p class="small">正數＝欠款；負數＝應收款。所有人的淨額加總應為 0。</p>
+    </div>
+
+    <div class="panel">
+      <h2>新增紀錄</h2>
+      <label>紀錄類型</label>
+      <select id="kind">
+        <option value="debt">欠點</option>
+        <option value="pay">還款</option>
+      </select>
+      <label id="fromLabel">欠款人</label>
+      <select id="from"></select>
+      <label id="toLabel">收款人</label>
+      <select id="to"></select>
+      <label>點數</label>
+      <input id="amount" type="number" min="1" max="100000" step="1" placeholder="輸入點數">
+      <label>備註（選填）</label>
+      <input id="note" type="text" maxlength="100" placeholder="例如：第一將、第二將">
+      <button id="addBtn">新增紀錄</button>
+    </div>
+
+    <div class="panel">
+      <div class="row">
+        <h2>交易歷史</h2>
+        <span class="small" id="entryCount"></span>
+      </div>
+      <div id="history"></div>
+    </div>
+
+    <section id="adminPanel" class="panel hidden">
+      <h2>管理者專區｜加入申請</h2>
+      <div id="requests"></div>
+      <h2 style="margin-top:22px">已加入玩家</h2>
+      <div id="members"></div>
+    </section>
+  </section>
 </main>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {
-  getAuth,
-  signInAnonymously,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getAuth,signInAnonymously,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {getDatabase,ref,onValue,push,set,get} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCvjapUFvLpcq3ZmvibyzjhNvEkLmM2eg0",
@@ -74,31 +123,171 @@ const firebaseConfig = {
   measurementId: "G-20EZGR43NX"
 };
 
-const status = document.getElementById("status");
+const ADMIN_UID = "RbywyE7ap9gAohqj26ixpHMw8Pz1";
+const ROOM = "mahjong01";
+const PLAYERS = ["慶","德","歐","哲"];
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+const roomPath = `rooms/${ROOM}`;
+const $ = id => document.getElementById(id);
 
-try {
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
+let currentUser = null;
+let myName = "";
+let entries = {};
+let members = {};
+let requests = {};
+let listenersStarted = false;
 
-  onAuthStateChanged(auth, user => {
-    if (user) {
-      document.getElementById("uid").textContent = user.uid;
-      document.getElementById("uidArea").style.display = "block";
-      status.textContent = "匿名登入成功！";
-    }
-  });
-
-  await signInAnonymously(auth);
-
-} catch (error) {
-  status.textContent = "登入失敗：" + error.message;
+function status(message, type="") {
+  $("status").textContent = message;
+  $("status").className = "status " + type;
 }
+function show(id,yes=true){$(id).classList.toggle("hidden",!yes)}
+function esc(s){
+  return String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function money(n){return Number(n).toLocaleString("zh-TW")}
+function fillPlayers(){
+  for(const id of ["from","to"]){
+    $(id).innerHTML=PLAYERS.map(p=>`<option value="${p}">${p}</option>`).join("");
+  }
+  $("to").selectedIndex=1;
+}
+function renderBalances(){
+  const net=Object.fromEntries(PLAYERS.map(p=>[p,0]));
+  Object.values(entries).forEach(e=>{
+    const n=Number(e.amount)||0;
+    if(e.kind==="debt"){net[e.from]+=n;net[e.to]-=n;}
+    if(e.kind==="pay"){net[e.from]-=n;net[e.to]+=n;}
+  });
+  $("balances").innerHTML=PLAYERS.map(p=>{
+    const n=net[p];
+    const label=n>0?"淨欠款":n<0?"淨應收":"已結清";
+    return `<div class="person"><strong>${p}</strong><div class="amount ${n>0?"positive":n<0?"negative":""}">${n>0?"+":""}${money(n)}</div><div class="small">${label}</div></div>`;
+  }).join("");
+}
+function renderHistory(){
+  const list=Object.entries(entries).sort((a,b)=>(b[1].createdAt||0)-(a[1].createdAt||0));
+  $("entryCount").textContent=`共 ${list.length} 筆`;
+  if(!list.length){$("history").innerHTML='<p class="small">目前還沒有交易紀錄。</p>';return;}
+  $("history").innerHTML=list.map(([id,e])=>{
+    const kind=e.kind==="debt"?"欠點":"還款";
+    const detail=e.kind==="debt"?`${esc(e.from)} 欠 ${esc(e.to)}`:`${esc(e.from)} 還給 ${esc(e.to)}`;
+    const date=e.createdAt?new Date(e.createdAt).toLocaleString("zh-TW"):"時間未記錄";
+    return `<div class="entry"><div class="row"><strong>${kind}｜${detail}</strong><strong>${money(e.amount)} 點</strong></div><div class="small">${date}・登記者：${esc(e.byName||"玩家")} ${e.note?`・${esc(e.note)}`:""}</div></div>`;
+  }).join("");
+}
+function renderMembers(){
+  $("members").innerHTML=Object.entries(members).map(([uid,name])=>
+    `<div class="entry">${esc(name)} <span class="small">${uid===ADMIN_UID?"（管理者）":"（已核准）"}</span></div>`
+  ).join("")||'<p class="small">尚無玩家。</p>';
+}
+function renderRequests(){
+  const list=Object.entries(requests);
+  if(!list.length){$("requests").innerHTML='<p class="small">目前沒有待處理申請。</p>';return;}
+  $("requests").innerHTML=list.map(([uid,r])=>{
+    const already=members[uid];
+    return `<div class="entry"><strong>${esc(r.name||"未指定")}</strong><div class="small">UID：${esc(uid)}</div><div class="small">${r.createdAt?new Date(r.createdAt).toLocaleString("zh-TW"):""}</div><button data-approve="${esc(uid)}" data-name="${esc(r.name)}" ${already?"disabled":""}>${already?"已核准":"核准加入"}</button></div>`;
+  }).join("");
+  $("requests").querySelectorAll("[data-approve]").forEach(btn=>{
+    btn.addEventListener("click",()=>approve(btn.dataset.approve,btn.dataset.name));
+  });
+}
+function startListeners(){
+  if(listenersStarted)return;
+  listenersStarted=true;
+  onValue(ref(db,`${roomPath}/entries`),snap=>{
+    entries=snap.val()||{};
+    renderBalances();renderHistory();
+  },err=>status("讀取交易失敗："+err.message,"error"));
+  if(currentUser.uid===ADMIN_UID){
+    onValue(ref(db,`${roomPath}/members`),snap=>{
+      members=snap.val()||{};
+      renderMembers();renderHistory();
+    },err=>status("讀取玩家名單失敗："+err.message,"error"));
+    onValue(ref(db,`${roomPath}/joinRequests`),snap=>{
+      requests=snap.val()||{};
+      renderRequests();
+    },err=>status("讀取申請失敗："+err.message,"error"));
+    show("adminPanel");
+  }else{
+    get(ref(db,`${roomPath}/members/${currentUser.uid}`)).then(snap=>{
+      if(snap.exists()){myName=snap.val();$("myName").textContent=myName;}
+    }).catch(()=>{});
+  }
+}
+async function approve(uid,name){
+  if(currentUser.uid!==ADMIN_UID)return;
+  if(!PLAYERS.includes(name)||name==="慶"){alert("申請身分不正確。");return;}
+  if(Object.values(members).includes(name)){alert("這個玩家身分已經有人使用。");return;}
+  try{
+    await set(ref(db,`${roomPath}/members/${uid}`),name);
+    alert(`已核准 ${name}。`);
+  }catch(e){alert("核准失敗："+e.message);}
+}
+$("joinBtn").addEventListener("click",async()=>{
+  const name=$("joinName").value;
+  if(!currentUser)return;
+  try{
+    const existing=await get(ref(db,`${roomPath}/joinRequests/${currentUser.uid}`));
+    if(existing.exists()){status("這台裝置已經送出申請。請通知慶核准。","success");return;}
+    await set(ref(db,`${roomPath}/joinRequests/${currentUser.uid}`),{name,createdAt:Date.now()});
+    status("申請已送出！請通知慶到管理者專區核准。","success");
+    $("joinBtn").disabled=true;
+  }catch(e){status("申請失敗："+e.message,"error");}
+});
+$("addBtn").addEventListener("click",async()=>{
+  const kind=$("kind").value,from=$("from").value,to=$("to").value;
+  const amount=Number($("amount").value),note=$("note").value.trim();
+  if(from===to){alert("欠款人與收款人不能相同。");return;}
+  if(!Number.isInteger(amount)||amount<=0||amount>100000){alert("請輸入 1 至 100,000 的整數點數。");return;}
+  $("addBtn").disabled=true;
+  try{
+    const newRef=push(ref(db,`${roomPath}/entries`));
+    await set(newRef,{kind,from,to,amount,note,by:currentUser.uid,byName:myName,createdAt:Date.now()});
+    $("amount").value="";$("note").value="";
+    status("紀錄已成功新增。","success");
+  }catch(e){status("新增失敗："+e.message,"error");}
+  finally{$("addBtn").disabled=false;}
+});
+$("kind").addEventListener("change",()=>{
+  $("fromLabel").textContent=$("kind").value==="debt"?"欠款人":"還款人";
+  $("toLabel").textContent=$("kind").value==="debt"?"收款人":"收款人";
+});
 
-document.getElementById("copyBtn").onclick = async () => {
-  const uid = document.getElementById("uid").textContent;
-  await navigator.clipboard.writeText(uid);
-  document.getElementById("copyBtn").textContent = "已複製";
-};
+onAuthStateChanged(auth,async user=>{
+  if(!user)return;
+  currentUser=user;
+  status("匿名登入成功，正在確認玩家權限……");
+  fillPlayers();
+  if(user.uid===ADMIN_UID){
+    myName="慶";
+    members[ADMIN_UID]="慶";
+    $("myName").textContent="慶（管理者）";
+    show("appPanel");show("adminPanel");
+    status("歡迎回來，慶。你目前是帳本管理者。","success");
+    startListeners();
+    return;
+  }
+  try{
+    const memberSnap=await get(ref(db,`${roomPath}/members/${user.uid}`));
+    if(memberSnap.exists()){
+      myName=memberSnap.val();
+      $("myName").textContent=myName;
+      show("appPanel");
+      status(`歡迎 ${myName}，已成功加入帳本。`,"success");
+      startListeners();
+    }else{
+      show("joinPanel");
+      status("這台裝置尚未獲得帳本權限，請提出加入申請。");
+    }
+  }catch(e){
+    show("joinPanel");
+    status("確認權限時發生錯誤："+e.message,"error");
+  }
+});
+try{await signInAnonymously(auth);}catch(e){status("匿名登入失敗："+e.message,"error");}
 </script>
 </body>
 </html>
