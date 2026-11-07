@@ -1,0 +1,104 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>麻將欠點帳本｜裝置註冊</title>
+  <style>
+    body {
+      font-family: Arial, "Noto Sans TC", sans-serif;
+      background: #17232d;
+      color: white;
+      padding: 30px 18px;
+      margin: 0;
+    }
+    main {
+      max-width: 500px;
+      margin: 50px auto;
+      padding: 25px;
+      background: #243541;
+      border-radius: 16px;
+    }
+    h1 { font-size: 25px; }
+    .uid {
+      background: #101820;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-wrap: anywhere;
+      user-select: all;
+    }
+    button {
+      background: #e0b45b;
+      border: 0;
+      padding: 12px 18px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #uidArea { display: none; }
+    #status { color: #f4cf83; line-height: 1.7; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>麻將欠點帳本</h1>
+  <p>四人共用帳本｜裝置註冊測試</p>
+  <p id="status">正在連接 Firebase……</p>
+
+  <div id="uidArea">
+    <p>你的裝置 UID：</p>
+    <div class="uid" id="uid"></div>
+    <br>
+    <button id="copyBtn">複製 UID</button>
+    <p>請把 UID 傳給帳本管理者，並告知你的玩家身分。</p>
+  </div>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth,
+  signInAnonymously,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCvjapUFvLpcq3ZmvibyzjhNvEkLmM2eg0",
+  authDomain: "mahjong-debt-tracker.firebaseapp.com",
+  databaseURL: "https://mahjong-debt-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "mahjong-debt-tracker",
+  storageBucket: "mahjong-debt-tracker.firebasestorage.app",
+  messagingSenderId: "598496727063",
+  appId: "1:598496727063:web:c82dfee1ce1c78fd23cc52",
+  measurementId: "G-20EZGR43NX"
+};
+
+const status = document.getElementById("status");
+
+try {
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  onAuthStateChanged(auth, user => {
+    if (user) {
+      document.getElementById("uid").textContent = user.uid;
+      document.getElementById("uidArea").style.display = "block";
+      status.textContent = "匿名登入成功！";
+    }
+  });
+
+  await signInAnonymously(auth);
+
+} catch (error) {
+  status.textContent = "登入失敗：" + error.message;
+}
+
+document.getElementById("copyBtn").onclick = async () => {
+  const uid = document.getElementById("uid").textContent;
+  await navigator.clipboard.writeText(uid);
+  document.getElementById("copyBtn").textContent = "已複製";
+};
+</script>
+</body>
+</html>
