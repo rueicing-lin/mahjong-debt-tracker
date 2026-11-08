@@ -464,6 +464,47 @@ $("kind").addEventListener("change",()=>{
   $("fromLabel").textContent=$("kind").value==="debt"?"欠款人":"還款人";
   $("toLabel").textContent=$("kind").value==="debt"?"收款人":"收款人";
 });
+  
+$("resetGameBtn").addEventListener("click",async()=>{
+  // 只允許管理員操作
+  if(currentUser?.uid!==ADMIN_UID){
+    alert("只有管理員可以重置牌局。");
+    return;
+  }
+
+  // 確認目前是否有紀錄
+  const snapshot=await get(ref(db,`${roomPath}/entries`));
+  if(!snapshot.exists()){
+    alert("目前沒有任何牌局紀錄，不需要重置。");
+    return;
+  }
+
+  const count=Object.keys(snapshot.val()).length;
+
+  // 第一次確認
+  if(!confirm(
+    `確定要重置整場牌局嗎？\n\n目前共有 ${count} 筆紀錄。\n所有玩家的累積欠點都會歸零。`
+  ))return;
+
+  // 第二次確認
+  const confirmation=prompt(
+    "這個操作無法復原！\n\n請輸入「重置牌局」以確認："
+  );
+
+  if(confirmation!=="重置牌局"){
+    alert("已取消重置，資料沒有變動。");
+    return;
+  }
+
+  try{
+    await remove(ref(db,`${roomPath}/entries`));
+    status("牌局已重置，所有玩家欠點已歸零。","success");
+    alert("重置成功！可以開始下一場牌局了。");
+  }catch(e){
+    alert("重置失敗："+e.message);
+  }
+});
+
 
 onAuthStateChanged(auth,async user=>{
   if(!user)return;
