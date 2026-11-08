@@ -342,8 +342,8 @@ async function correctEntry(id){
       state='<span class="small error">【已撤銷】</span>';
     }
 
-    const isOriginal=!e.reversalOf&&!e.correctionOf;
-    const actions=currentUser?.uid===ADMIN_UID && isOriginal && !reversed && !corrected
+    const isReversal=!!e.reversalOf;
+const actions=currentUser?.uid===ADMIN_UID && !isReversal && !reversed && !corrected
       ? `<div style="display:flex;gap:8px;margin-top:9px">
           <button class="danger" data-reverse="${esc(id)}">撤銷</button>
           <button class="secondary" data-correct="${esc(id)}">修正</button>
