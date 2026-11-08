@@ -110,7 +110,7 @@ button:disabled{opacity:.45}
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {getAuth,signInAnonymously,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import {getDatabase,ref,onValue,push,set,get} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import {getDatabase,ref,onValue,push,set,get,update} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCvjapUFvLpcq3ZmvibyzjhNvEkLmM2eg0",
@@ -168,15 +168,209 @@ function renderBalances(){
   }).join("");
 }
 function renderHistory(){
-  const list=Object.entries(entries).sort((a,b)=>(b[1].createdAt||0)-(a[1].createdAt||0));
+  const list=Object.entries(entries).sort(
+    (a,b)=>(b[1].createdAt||0)-(a[1].createdAt||0)
+  );
+
   $("entryCount").textContent=`共 ${list.length} 筆`;
-  if(!list.length){$("history").innerHTML='<p class="small">目前還沒有交易紀錄。</p>';return;}
+
+  if(!list.length){
+    $("history").innerHTML='<p class="small">目前還沒有交易紀錄。</p>';
+    return;
+  }
+  async function reverseEntry(id){
+  if(currentUser?.uid!==ADMIN_UID){
+    alert("只有管理員可以撤銷紀錄。");
+    return;
+  }
+
+  const original=entries[id];
+  if(!original)return;
+
+  const alreadyReversed=Object.values(entries).some(
+    e=>e.reversalOf===id
+  );
+
+  if(alreadyReversed){
+    alert("這筆紀錄已經撤銷，不能重複操作。");
+    return;
+  }
+
+  if(!confirm(
+    `確定撤銷這筆紀錄？\n\n${original.from} → ${original.to}\n${money(original.amount)} 點`
+  ))return;
+
+  const reverseKey=`reversal_${id}`;
+  const reversal={
+    kind:original.kind,
+    from:original.to,
+    to:original.from,
+    amount:original.amount,
+    note:`【撤銷】抵銷原紀錄 ${id}`,
+    by:currentUser.uid,
+    byName:myName,
+    createdAt:Date.now(),
+    reversalOf:id
+  };
+
+  try{
+    await set(ref(db,`${roomPath}/entries/${reverseKey}`),reversal);
+    status("已成功撤銷紀錄，原始紀錄仍然保留。","success");
+  }catch(e){
+    alert("撤銷失敗："+e.message);
+  }
+}
+
+async function correctEntry(id){
+  if(currentUser?.uid!==ADMIN_UID){
+    alert("只有管理員可以修正紀錄。");
+    return;
+  }
+
+  const original=entries[id];
+  if(!original)return;
+
+  const alreadyReversed=Object.values(entries).some(
+    e=>e.reversalOf===id
+  );
+
+  if(alreadyReversed){
+    alert("這筆紀錄已經處理過，不能重複修正。");
+    return;
+  }
+
+  const kindInput=prompt(
+    "請選擇正確紀錄類型：\n1 = 欠點\n2 = 還款",
+    original.kind==="debt"?"1":"2"
+  );
+
+  if(kindInput===null)return;
+  if(kindInput!=="1"&&kindInput!=="2"){
+    alert("請輸入 1 或 2。");
+    return;
+  }
+
+  const kind=kindInput==="1"?"debt":"pay";
+
+  const from=prompt("請輸入正確的付款人／欠款人：",original.from);
+  if(from===null)return;
+
+  const to=prompt("請輸入正確的收款人：",original.to);
+  if(to===null)return;
+
+  if(!PLAYERS.includes(from)||!PLAYERS.includes(to)||from===to){
+    alert("玩家身分不正確，或付款人與收款人不能相同。");
+    return;
+  }
+
+  const amountInput=prompt("請輸入正確點數：",String(original.amount));
+  if(amountInput===null)return;
+
+  const amount=Number(amountInput);
+  if(!Number.isInteger(amount)||amount<=0||amount>100000){
+    alert("點數必須是 1 至 100,000 的整數。");
+    return;
+  }
+
+  const note=prompt("請輸入正確備註：",original.note||"");
+  if(note===null)return;
+
+  if(note.length>100){
+    alert("備註不能超過 100 個字。");
+    return;
+  }
+
+  if(!confirm(
+    `確定修正這筆紀錄？\n\n原紀錄：${original.from} → ${original.to}，${money(original.amount)} 點\n新紀錄：${from} → ${to}，${money(amount)} 點`
+  ))return;
+
+  const now=Date.now();
+
+  const reversal={
+    kind:original.kind,
+    from:original.to,
+    to:original.from,
+    amount:original.amount,
+    note:`【修正抵銷】原紀錄 ${id}`,
+    by:currentUser.uid,
+    byName:myName,
+    createdAt:now,
+    reversalOf:id
+  };
+
+  const corrected={
+    kind,
+    from,
+    to,
+    amount,
+    note,
+    by:currentUser.uid,
+    byName:myName,
+    createdAt:now+1,
+    correctionOf:id
+  };
+
+  const updates={};
+  updates[`reversal_${id}`]=reversal;
+  updates[`correction_${id}`]=corrected;
+
+  try{
+    await update(ref(db,`${roomPath}/entries`),updates);
+    status("紀錄已成功修正，原始紀錄及修正過程均已保留。","success");
+  }catch(e){
+    alert("修正失敗："+e.message);
+  }
+}
+
   $("history").innerHTML=list.map(([id,e])=>{
     const kind=e.kind==="debt"?"欠點":"還款";
-    const detail=e.kind==="debt"?`${esc(e.from)} 欠 ${esc(e.to)}`:`${esc(e.from)} 還給 ${esc(e.to)}`;
-    const date=e.createdAt?new Date(e.createdAt).toLocaleString("zh-TW"):"時間未記錄";
-    return `<div class="entry"><div class="row"><strong>${kind}｜${detail}</strong><strong>${money(e.amount)} 點</strong></div><div class="small">${date}・登記者：${esc(e.byName||"玩家")} ${e.note?`・${esc(e.note)}`:""}</div></div>`;
+    const detail=e.kind==="debt"
+      ?`${esc(e.from)} 欠 ${esc(e.to)}`
+      :`${esc(e.from)} 還給 ${esc(e.to)}`;
+
+    const date=e.createdAt
+      ?new Date(e.createdAt).toLocaleString("zh-TW")
+      :"時間未記錄";
+
+    const reversed=Object.values(entries).some(x=>x.reversalOf===id);
+    const corrected=Object.values(entries).some(x=>x.correctionOf===id);
+
+    let state="";
+    if(corrected){
+      state='<span class="small error">【已更正】</span>';
+    }else if(reversed){
+      state='<span class="small error">【已撤銷】</span>';
+    }
+
+    const isOriginal=!e.reversalOf&&!e.correctionOf;
+    const actions=currentUser?.uid===ADMIN_UID && isOriginal && !reversed && !corrected
+      ? `<div style="display:flex;gap:8px;margin-top:9px">
+          <button class="danger" data-reverse="${esc(id)}">撤銷</button>
+          <button class="secondary" data-correct="${esc(id)}">修正</button>
+        </div>`
+      :"";
+
+    return `
+      <div class="entry">
+        <div class="row">
+          <strong>${kind}｜${detail} ${state}</strong>
+          <strong>${money(e.amount)} 點</strong>
+        </div>
+        <div class="small">
+          ${date}・登記者：${esc(e.byName||"玩家")}
+          ${e.note?`・${esc(e.note)}`:""}
+        </div>
+        ${actions}
+      </div>`;
   }).join("");
+
+  $("history").querySelectorAll("[data-reverse]").forEach(btn=>{
+    btn.addEventListener("click",()=>reverseEntry(btn.dataset.reverse));
+  });
+
+  $("history").querySelectorAll("[data-correct]").forEach(btn=>{
+    btn.addEventListener("click",()=>correctEntry(btn.dataset.correct));
+  });
 }
 function renderMembers(){
   $("members").innerHTML=Object.entries(members).map(([uid,name])=>
