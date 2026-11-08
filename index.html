@@ -98,13 +98,28 @@ button:disabled{opacity:.45}
       <div id="history"></div>
     </div>
 
-    <section id="adminPanel" class="panel hidden">
-      <h2>管理者專區｜加入申請</h2>
-      <div id="requests"></div>
-      <h2 style="margin-top:22px">已加入玩家</h2>
-      <div id="members"></div>
-    </section>
-  </section>
+    
+<section id="adminPanel" class="panel hidden">
+  <h2>管理者專區｜加入申請</h2>
+  <div id="requests"></div>
+
+  <h2 style="margin-top:22px">已加入玩家</h2>
+  <div id="members"></div>
+
+  <h2 style="margin-top:22px">牌局管理</h2>
+  <p class="small">
+    結束當前牌局後，可將所有欠點及還款紀錄清空。
+    此操作會讓四位玩家的累積欠點全部歸零，且無法復原。
+  </p>
+  <button
+    id="resetGameBtn"
+    type="button"
+    style="background:#b83232;color:white;width:100%;margin-top:10px"
+  >
+    重置整場牌局
+  </button>
+</section>
+
 </main>
 
 <script type="module">
